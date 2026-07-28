@@ -1,0 +1,136 @@
+version: "3.8"
+
+name: trial-assistant
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:15  # 原 postgres:15-alpine，使用本地已有镜像
+    container_name: ta-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: trial_assistant
+      POSTGRES_USER: trialadmin
+      POSTGRES_PASSWORD: Trial@2026!
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trialadmin -d trial_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7  # 原 redis:7-alpine，使用本地已有镜像
+    container_name: ta-redis
+    restart: unless-stopped
+    command: redis-server --requirepass Redis@2026!
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "Redis@2026!", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── RabbitMQ ───────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.9-management  # 原 3.12-management-alpine，使用本地已有镜像
+    container_name: ta-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: trialadmin
+      RABBITMQ_DEFAULT_PASS: Rabbit@2026!
+    ports:
+      - "5672:5672"       # AMQP
+      - "15672:15672"     # Management UI
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Milvus (Standalone) ────────────────────────────────────────
+  # Milvus standalone requires etcd and minio as dependencies
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: ta-milvus-etcd
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command:
+      - etcd
+      - --advertise-client-urls=http://milvus-etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --data-dir=/etcd
+    volumes:
+      - milvus-etcd:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  milvus-minio:
+    image: minio/minio:latest  # 原 RELEASE.2023-03-20T20-16-18Z，使用本地已有镜像
+    container_name: ta-milvus-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio-data --console-address ":9001"
+    volumes:
+      - milvus-minio:/minio-data
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  milvus:
+    image: milvusdb/milvus:v2.4.4  # 原 v2.3.12，使用本地已有镜像
+    container_name: ta-milvus
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "19530:19530"   # gRPC
+      - "9091:9091"     # Metrics
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      milvus-etcd:
+        condition: service_healthy
+      milvus-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]  # v2.4.4 用 /healthz
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:
+  milvus-etcd:
+  milvus-minio:
+  milvus-data:

@@ -1,0 +1,41 @@
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models - keep subfolders but ignore contents (anywhere in the project)
+**/models/*
+!**/models/*/
+**/models/*/*
