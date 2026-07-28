@@ -5,7 +5,7 @@ name: trial-assistant
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────
   postgres:
-    image: postgres:15  # 原 postgres:15-alpine，使用本地已有镜像
+    image: postgres:15
     container_name: ta-postgres
     restart: unless-stopped
     environment:
@@ -24,7 +24,7 @@ services:
 
   # ── Redis ──────────────────────────────────────────────────────
   redis:
-    image: redis:7  # 原 redis:7-alpine，使用本地已有镜像
+    image: redis:7
     container_name: ta-redis
     restart: unless-stopped
     command: redis-server --requirepass Redis@2026!
@@ -40,7 +40,7 @@ services:
 
   # ── RabbitMQ ───────────────────────────────────────────────────
   rabbitmq:
-    image: rabbitmq:3.9-management  # 原 3.12-management-alpine，使用本地已有镜像
+    image: rabbitmq:3.9-management
     container_name: ta-rabbitmq
     restart: unless-stopped
     environment:
@@ -82,7 +82,7 @@ services:
       retries: 3
 
   milvus-minio:
-    image: minio/minio:latest  # 原 RELEASE.2023-03-20T20-16-18Z，使用本地已有镜像
+    image: minio/minio:latest
     container_name: ta-milvus-minio
     restart: unless-stopped
     environment:
@@ -101,7 +101,7 @@ services:
       retries: 3
 
   milvus:
-    image: milvusdb/milvus:v2.4.4  # 原 v2.3.12，使用本地已有镜像
+    image: milvusdb/milvus:v2.4.4
     container_name: ta-milvus
     restart: unless-stopped
     command: ["milvus", "run", "standalone"]
@@ -121,7 +121,7 @@ services:
       milvus-minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]  # v2.4.4 用 /healthz
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
