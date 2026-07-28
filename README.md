@@ -95,6 +95,18 @@
 pip install -r requirements.txt
 ```
 
+### 模型准备
+
+需要将 reranker 和 embedding 模型手动放置到 `backend/models/` 目录下：
+
+```
+backend/models/
+├── embedding/
+│   └── bge-m3/           # BGE-M3 嵌入模型
+└── reranker/
+    └── crossencoder/     # CrossEncoder 重排序模型
+```
+
 ### 启动服务
 
 ```bash
